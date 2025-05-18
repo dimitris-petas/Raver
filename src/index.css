@@ -3,6 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-size: 14px;
+  }
+  
+  h1 {
+    @apply text-2xl font-bold;
+  }
+  
+  h2 {
+    @apply text-xl font-semibold;
+  }
+  
+  h3 {
+    @apply text-lg font-medium;
+  }
+  
+  p {
+    @apply text-sm;
+  }
+  
   body {
     @apply bg-white text-gray-900;
   }
@@ -10,7 +30,7 @@
 
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors;
+    @apply px-4 py-2 rounded-md font-medium transition-colors text-sm;
   }
   
   .btn-primary {
@@ -26,10 +46,10 @@
   }
 
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-100;
+    @apply bg-white rounded-xl shadow-sm border border-gray-100;
   }
 
   .gradient-bg {
-    @apply bg-gradient-to-r from-primary-50 to-primary-100;
+    @apply bg-gradient-to-tr from-fuchsia-50 to-cyan-50;
   }
 } 

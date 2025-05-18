@@ -1,80 +1,106 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store';
 
-export default function Register() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const { register } = useAuthStore();
+const Register = () => {
   const navigate = useNavigate();
+  const { register } = useAuthStore();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      await register(email, password, name);
+      await register(formData);
       navigate('/');
     } catch (err) {
-      setError('Registration failed. Please try again.');
+      setError('Failed to create account');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Create your account
-          </h2>
+    <div className="min-h-screen bg-gradient-to-br from-fuchsia-50 to-cyan-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-tr from-[#d417c8] to-cyan-400 bg-clip-text text-transparent mb-2">Create Account</h1>
+          <p className="text-gray-600">Join Raver and start splitting expenses</p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="sr-only">
-                Full name
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Name
               </label>
               <input
                 id="name"
-                name="name"
                 type="text"
                 required
-                className="input rounded-t-md"
-                placeholder="Full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors"
+                placeholder="Enter your name"
               />
             </div>
+
             <div>
-              <label htmlFor="email-address" className="sr-only">
-                Email address
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email
               </label>
               <input
-                id="email-address"
-                name="email"
+                id="email"
                 type="email"
-                autoComplete="email"
                 required
-                className="input"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors"
+                placeholder="Enter your email"
               />
             </div>
+
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
               <input
                 id="password"
-                name="password"
                 type="password"
-                autoComplete="new-password"
                 required
-                className="input rounded-b-md"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors"
+                placeholder="Create a password"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                required
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors"
+                placeholder="Confirm your password"
               />
             </div>
           </div>
@@ -83,22 +109,26 @@ export default function Register() {
             <div className="text-red-500 text-sm text-center">{error}</div>
           )}
 
-          <div>
-            <button type="submit" className="btn btn-primary w-full">
-              Sign up
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-gradient-to-tr from-[#d417c8] to-cyan-400 text-white py-3 rounded-lg font-medium hover:from-[#b314a8] hover:to-cyan-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Creating account...' : 'Create account'}
+          </button>
 
-          <div className="text-sm text-center">
-            <Link
-              to="/login"
-              className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
-            >
-              Already have an account? Sign in
-            </Link>
+          <div className="text-center">
+            <p className="text-center text-gray-600">
+              Already have an account?{' '}
+              <Link to="/login" className="text-[#d417c8] hover:text-[#b314a8] font-medium">
+                Sign in
+              </Link>
+            </p>
           </div>
         </form>
       </div>
     </div>
   );
-} 
+};
+
+export default Register; 

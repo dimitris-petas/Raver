@@ -8,6 +8,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
+  updateProfile: (data: { name: string; email: string; avatar?: string }) => Promise<void>;
 }
 
 interface GroupState {
@@ -43,6 +44,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: response.user, token: response.token });
   },
   logout: () => set({ user: null, token: null }),
+  updateProfile: async (data) => {
+    const updatedUser = await mockApi.updateProfile(data);
+    set({ user: updatedUser });
+  },
 }));
 
 export const useGroupStore = create<GroupState>((set) => ({

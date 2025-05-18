@@ -1,127 +1,304 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useGroupStore } from '../store';
-import { PlusIcon } from '@heroicons/react/24/outline';
-import CreateGroupModal from '../components/CreateGroupModal';
-import PieChartCard from '../components/PieChartCard';
-import BarChartCard from '../components/BarChartCard';
+import { useExpenseStore } from '../store';
+import { PlusIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  BarElement,
+  Filler,
+} from 'chart.js';
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
+import { format } from 'date-fns';
 
-// Mock data for charts
-const pieData = [
-  { name: 'Alice', value: 400 },
-  { name: 'Bob', value: 300 },
-  { name: 'Charlie', value: 300 },
-  { name: 'David', value: 200 },
-];
-const barData = [
-  { name: 'Jan', Expenses: 40 },
-  { name: 'Feb', Expenses: 80 },
-  { name: 'Mar', Expenses: 65 },
-  { name: 'Apr', Expenses: 120 },
-  { name: 'May', Expenses: 90 },
-  { name: 'Jun', Expenses: 150 },
-  { name: 'Jul', Expenses: 110 },
-  { name: 'Aug', Expenses: 130 },
-  { name: 'Sep', Expenses: 100 },
-  { name: 'Oct', Expenses: 170 },
-  { name: 'Nov', Expenses: 200 },
-  { name: 'Dec', Expenses: 210 },
-];
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  ArcElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
-export default function Dashboard() {
+const Dashboard = () => {
   const { groups, fetchGroups } = useGroupStore();
-  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
+  const { expenses, fetchExpenses } = useExpenseStore();
+  const [timeRange, setTimeRange] = useState('week');
 
   useEffect(() => {
     fetchGroups();
-  }, [fetchGroups]);
+    // Fetch expenses for all groups
+    Promise.all(groups.map(group => fetchExpenses(group.id)));
+  }, [fetchGroups, fetchExpenses, groups]);
+
+  // Calculate total balance
+  const totalBalance = groups.reduce((sum, group) => {
+    const userBalance = group.members.find(m => m.id === 'current-user-id')?.balance || 0;
+    return sum + userBalance;
+  }, 0);
+
+  // Prepare expense history data
+  const getExpenseHistoryData = () => {
+    const now = new Date();
+    const labels: string[] = [];
+    const data: number[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      labels.push(format(date, 'MMM d'));
+      
+      const dayExpenses = expenses.filter(e => {
+        const expenseDate = new Date(e.date);
+        return expenseDate.toDateString() === date.toDateString();
+      });
+      
+      const total = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
+      data.push(total);
+    }
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Daily Expenses',
+          data,
+          borderColor: '#d417c8',
+          backgroundColor: 'rgba(212, 23, 200, 0.1)',
+          tension: 0.4,
+          fill: true,
+        },
+      ],
+    };
+  };
+
+  // Prepare expense distribution data
+  const getExpenseDistributionData = () => {
+    const categories = expenses.reduce((acc, expense) => {
+      const category = expense.category || 'Other';
+      acc[category] = (acc[category] || 0) + expense.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      labels: Object.keys(categories),
+      datasets: [
+        {
+          data: Object.values(categories),
+          backgroundColor: [
+            'rgba(212, 23, 200, 0.8)',
+            'rgba(14, 165, 233, 0.8)',
+            'rgba(16, 185, 129, 0.8)',
+            'rgba(245, 158, 11, 0.8)',
+            'rgba(239, 68, 68, 0.8)',
+          ],
+          borderWidth: 0,
+        },
+      ],
+    };
+  };
+
+  // Prepare group balances data
+  const getGroupBalancesData = () => {
+    return {
+      labels: groups.map(g => g.name),
+      datasets: [
+        {
+          label: 'Your Balance',
+          data: groups.map(g => {
+            const userBalance = g.members.find(m => m.id === 'current-user-id')?.balance ?? 0;
+            return userBalance;
+          }),
+          backgroundColor: 'rgba(212, 23, 200, 0.8)',
+        },
+      ],
+    };
+  };
 
   return (
-    <div className="p-6 space-y-8">
-      {/* Header and Add Expense */}
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <button
-          className="btn btn-primary flex items-center px-5 py-2 rounded-lg bg-gradient-to-tr from-fuchsia-500 to-cyan-400 text-white font-semibold shadow hover:from-fuchsia-600 hover:to-cyan-500"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Expense
-        </button>
-      </div>
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="card p-6">
+          <h3 className="text-sm font-medium text-gray-500 mb-1">Total Balance</h3>
+          <p className="text-2xl font-bold text-gray-900">
+            ${Math.abs(totalBalance).toFixed(2)}
+          </p>
+          <p className="text-sm text-gray-500">
+            {totalBalance >= 0 ? 'You are owed' : 'You owe'}
+          </p>
+        </div>
 
-      {/* Analytics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-        <PieChartCard data={pieData} title="Expenses by Member" />
-        <BarChartCard data={barData} title="Monthly Expenses" dataKey="Expenses" />
-        {/* Group summary card */}
-        <div className="rounded-2xl bg-white shadow p-6 flex flex-col justify-center items-center">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900">Group Summary</h3>
-          <ul className="w-full space-y-2">
-            {groups.length === 0 && (
-              <li className="text-gray-500 text-center">No groups yet</li>
-            )}
-            {groups.map((group) => (
-              <li key={group.id} className="flex justify-between items-center text-sm px-2 py-1 rounded hover:bg-gray-50">
-                <span className="font-medium text-fuchsia-600">{group.name}</span>
-                <span className="text-gray-700">{group.members.length} members</span>
-              </li>
-            ))}
-          </ul>
+        <div className="card p-6">
+          <h3 className="text-sm font-medium text-gray-500 mb-1">Active Groups</h3>
+          <p className="text-2xl font-bold text-gray-900">{groups.length}</p>
+          <p className="text-sm text-gray-500">Groups you're part of</p>
+        </div>
+
+        <div className="card p-6">
+          <h3 className="text-sm font-medium text-gray-500 mb-1">Total Expenses</h3>
+          <p className="text-2xl font-bold text-gray-900">
+            ${expenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+          </p>
+          <p className="text-sm text-gray-500">This month</p>
+        </div>
+
+        <div className="card p-6">
+          <h3 className="text-sm font-medium text-gray-500 mb-1">Pending Settlements</h3>
+          <p className="text-2xl font-bold text-gray-900">
+            {expenses.filter(e => e.status === 'pending').length}
+          </p>
+          <p className="text-sm text-gray-500">Awaiting payment</p>
         </div>
       </div>
 
-      {/* Groups List */}
-      <div className="mt-8">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-xl font-semibold text-gray-900">Your Groups</h2>
-          <button
-            onClick={() => setIsCreateGroupModalOpen(true)}
-            className="btn btn-primary flex items-center px-4 py-2 rounded-lg bg-gradient-to-tr from-fuchsia-500 to-cyan-400 text-white font-semibold shadow hover:from-fuchsia-600 hover:to-cyan-500"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense History</h3>
+          <div className="h-80">
+            <Line
+              data={getExpenseHistoryData()}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: false,
+                  },
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    grid: {
+                      color: 'rgba(0, 0, 0, 0.05)',
+                    },
+                  },
+                  x: {
+                    grid: {
+                      display: false,
+                    },
+                  },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense Distribution</h3>
+          <div className="h-80">
+            <Doughnut
+              data={getExpenseDistributionData()}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'right',
+                  },
+                },
+                cutout: '70%',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="card p-6 mb-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Group Balances</h3>
+        <div className="h-80">
+          <Bar
+            data={getGroupBalancesData()}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false,
+                },
+              },
+              scales: {
+                y: {
+                  grid: {
+                    color: 'rgba(0, 0, 0, 0.05)',
+                  },
+                },
+                x: {
+                  grid: {
+                    display: false,
+                  },
+                },
+              },
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="card p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Recent Groups</h3>
+          <Link
+            to="/groups"
+            className="text-sm font-medium text-[#d417c8] hover:text-[#b314a8] flex items-center gap-1"
           >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Create Group
-          </button>
+            View all
+            <ArrowRightIcon className="h-4 w-4" />
+          </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {groups.map((group) => (
+
+        <div className="space-y-4">
+          {groups.slice(0, 3).map((group) => (
             <Link
               key={group.id}
               to={`/groups/${group.id}`}
-              className="card hover:shadow-md transition-shadow rounded-2xl bg-white p-6 flex flex-col"
+              className="block p-4 rounded-lg border border-gray-200 hover:border-[#d417c8]/20 hover:bg-[#d417c8]/5 transition-colors"
             >
-              <h3 className="text-lg font-semibold text-fuchsia-700 mb-2">{group.name}</h3>
-              <div className="space-y-2">
-                {group.members.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex justify-between items-center text-sm"
-                  >
-                    <span className="text-gray-600">{member.name}</span>
-                    <span
-                      className={`font-medium ${
-                        member.balance > 0
-                          ? 'text-green-600'
-                          : member.balance < 0
-                          ? 'text-red-600'
-                          : 'text-gray-600'
-                      }`}
-                    >
-                      {member.balance > 0
-                        ? `+$${member.balance.toFixed(2)}`
-                        : `-$${Math.abs(member.balance).toFixed(2)}`}
-                    </span>
-                  </div>
-                ))}
+              <div className="flex justify-between items-center">
+                <div>
+                  <h4 className="font-medium text-gray-900">{group.name}</h4>
+                  <p className="text-sm text-gray-500">
+                    {group.members.length} members
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-[#d417c8]">
+                    ${Math.abs(group.members.find(m => m.id === 'current-user-id')?.balance ?? 0).toFixed(2)}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {group.members.find(m => m.id === 'current-user-id')?.balance ?? 0 >= 0 ? 'You are owed' : 'You owe'}
+                  </p>
+                </div>
               </div>
             </Link>
           ))}
+
+          {groups.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-500 mb-4">You haven't joined any groups yet</p>
+              <Link
+                to="/groups"
+                className="btn btn-primary inline-flex items-center gap-2"
+              >
+                <PlusIcon className="h-5 w-5" />
+                Create your first group
+              </Link>
+            </div>
+          )}
         </div>
       </div>
-
-      <CreateGroupModal
-        isOpen={isCreateGroupModalOpen}
-        onClose={() => setIsCreateGroupModalOpen(false)}
-      />
     </div>
   );
-} 
+};
+
+export default Dashboard; 

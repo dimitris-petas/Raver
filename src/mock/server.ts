@@ -120,4 +120,14 @@ export const mockApi = {
     settlements.push(newSettlement);
     return newSettlement;
   },
+
+  updateProfile: async (data: { name: string; email: string; avatar?: string }): Promise<User> => {
+    const user = users[0]; // For demo, always update the first user
+    user.name = data.name;
+    user.email = data.email;
+    if (data.avatar) {
+      user.avatar = data.avatar;
+    }
+    return user;
+  },
 }; 

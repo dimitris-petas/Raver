@@ -1,64 +1,69 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store';
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const { login } = useAuthStore();
+const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuthStore();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
     try {
-      await login(email, password);
+      await login(formData);
       navigate('/');
     } catch (err) {
       setError('Invalid email or password');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Sign in to your account
-          </h2>
+    <div className="min-h-screen bg-gradient-to-br from-fuchsia-50 to-cyan-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-tr from-[#d417c8] to-cyan-400 bg-clip-text text-transparent mb-2">Welcome Back</h1>
+          <p className="text-gray-600">Sign in to your account</p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <div className="space-y-4">
             <div>
-              <label htmlFor="email-address" className="sr-only">
-                Email address
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email
               </label>
               <input
-                id="email-address"
-                name="email"
+                id="email"
                 type="email"
-                autoComplete="email"
                 required
-                className="input rounded-t-md"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors"
+                placeholder="Enter your email"
               />
             </div>
+
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
               <input
                 id="password"
-                name="password"
                 type="password"
-                autoComplete="current-password"
                 required
-                className="input rounded-b-md"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors"
+                placeholder="Enter your password"
               />
             </div>
           </div>
@@ -67,22 +72,26 @@ export default function Login() {
             <div className="text-red-500 text-sm text-center">{error}</div>
           )}
 
-          <div>
-            <button type="submit" className="btn btn-primary w-full">
-              Sign in
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-gradient-to-tr from-[#d417c8] to-cyan-400 text-white py-3 rounded-lg font-medium hover:from-[#b314a8] hover:to-cyan-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Signing in...' : 'Sign in'}
+          </button>
 
-          <div className="text-sm text-center">
-            <Link
-              to="/register"
-              className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
-            >
-              Don't have an account? Sign up
-            </Link>
+          <div className="text-center">
+            <p className="text-center text-gray-600">
+              Don't have an account?{' '}
+              <Link to="/register" className="text-[#d417c8] hover:text-[#b314a8] font-medium">
+                Sign up
+              </Link>
+            </p>
           </div>
         </form>
       </div>
     </div>
   );
-} 
+};
+
+export default Login; 

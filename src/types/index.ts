@@ -27,6 +27,8 @@ export interface Expense {
   paidBy: string;
   shares: ExpenseShare[];
   groupId: string;
+  category?: string;
+  status?: 'pending' | 'completed';
 }
 
 export interface ExpenseShare {
