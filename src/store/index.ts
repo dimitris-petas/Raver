@@ -1,29 +1,36 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { User, Group, Expense, Settlement, AuthResponse } from '../types';
 import { mockApi } from '../mock/server';
 
 interface AuthState {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthResponse>;
+  register: (email: string, password: string, name: string) => Promise<AuthResponse>;
   logout: () => void;
-  updateProfile: (data: { name: string; email: string; avatar?: string }) => Promise<void>;
+  updateProfile: (data: { name: string; email: string; avatar?: string }) => Promise<User>;
+  createUser: (email: string, name: string) => Promise<User>;
+  getUsers: () => Promise<User[]>;
 }
 
 interface GroupState {
   groups: Group[];
-  currentGroup: Group | null;
+  loading: boolean;
+  error: string | null;
   fetchGroups: () => Promise<void>;
-  createGroup: (name: string, memberIds: string[]) => Promise<void>;
-  setCurrentGroup: (group: Group | null) => void;
-  updateGroupBalances: (groupId: string, expenses: Expense[]) => void;
+  createGroup: (name: string, memberIds: string[]) => Promise<Group>;
+  updateGroup: (groupId: string, name: string) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
+  addMember: (groupId: string, email: string) => Promise<void>;
 }
 
 interface ExpenseState {
   expenses: Expense[];
+  isLoading: boolean;
+  error: string | null;
   fetchExpenses: (groupId: string) => Promise<void>;
-  createExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+  addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
 }
 
 interface SettlementState {
@@ -32,76 +39,185 @@ interface SettlementState {
   createSettlement: (settlement: Omit<Settlement, 'id' | 'date'>) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  token: null,
-  login: async (email: string, password: string) => {
-    const response = await mockApi.login(email, password);
-    set({ user: response.user, token: response.token });
-  },
-  register: async (email: string, password: string, name: string) => {
-    const response = await mockApi.register(email, password, name);
-    set({ user: response.user, token: response.token });
-  },
-  logout: () => set({ user: null, token: null }),
-  updateProfile: async (data) => {
-    const updatedUser = await mockApi.updateProfile(data);
-    set({ user: updatedUser });
-  },
-}));
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      login: async (email: string, password: string) => {
+        try {
+          const response = await mockApi.login(email, password);
+          set({ user: response.user });
+          return response;
+        } catch (error) {
+          throw error;
+        }
+      },
+      register: async (email: string, password: string, name: string) => {
+        try {
+          const response = await mockApi.register(email, password, name);
+          set({ user: response.user });
+          return response;
+        } catch (error) {
+          throw error;
+        }
+      },
+      logout: () => {
+        set({ user: null });
+      },
+      updateProfile: async (data: { name: string; email: string; avatar?: string }) => {
+        try {
+          const user = await mockApi.updateProfile(data);
+          set({ user });
+          return user;
+        } catch (error) {
+          throw error;
+        }
+      },
+      createUser: async (email: string, name: string) => {
+        try {
+          return await mockApi.createUser(email, name);
+        } catch (error) {
+          throw error;
+        }
+      },
+      getUsers: async () => {
+        try {
+          return await mockApi.getUsers();
+        } catch (error) {
+          throw error;
+        }
+      },
+    }),
+    {
+      name: 'auth-storage',
+      partialize: (state) => ({ user: state.user, token: state.token }),
+    }
+  )
+);
 
-export const useGroupStore = create<GroupState>((set) => ({
-  groups: [],
-  currentGroup: null,
-  fetchGroups: async () => {
-    const groups = await mockApi.getGroups();
-    set({ groups });
-  },
-  createGroup: async (name: string, memberIds: string[]) => {
-    const group = await mockApi.createGroup(name, memberIds);
-    set((state) => ({ groups: [...state.groups, group] }));
-  },
-  setCurrentGroup: (group) => set({ currentGroup: group }),
-  updateGroupBalances: (groupId, expenses) => {
-    set((state) => {
-      const updatedGroups = state.groups.map((group) => {
-        if (group.id !== groupId) return group;
-
-        const balances: Record<string, number> = {};
-        group.members.forEach((member) => {
-          balances[member.id] = 0;
-        });
-
-        expenses.forEach((expense) => {
-          balances[expense.paidBy] += expense.amount;
-          expense.shares.forEach((share) => {
-            balances[share.userId] -= share.amount;
+export const useGroupStore = create<GroupState>()(
+  persist(
+    (set, get) => ({
+      groups: [],
+      loading: false,
+      error: null,
+      fetchGroups: async () => {
+        set({ loading: true, error: null });
+        try {
+          const groups = await mockApi.getGroups();
+          set({ groups, loading: false });
+        } catch (error) {
+          console.error('Error fetching groups:', error);
+          set({ 
+            error: error instanceof Error ? error.message : 'Failed to fetch groups',
+            loading: false 
           });
-        });
-
-        return {
-          ...group,
-          members: group.members.map((member) => ({
-            ...member,
-            balance: balances[member.id],
-          })),
-        };
-      });
-
-      return { groups: updatedGroups };
-    });
-  },
-}));
+          throw error;
+        }
+      },
+      createGroup: async (name: string, memberIds: string[]) => {
+        set({ loading: true, error: null });
+        try {
+          const group = await mockApi.createGroup(name, memberIds);
+          set(state => ({ 
+            groups: [...state.groups, group],
+            loading: false 
+          }));
+          return group;
+        } catch (error) {
+          console.error('Error creating group:', error);
+          set({ 
+            error: error instanceof Error ? error.message : 'Failed to create group',
+            loading: false 
+          });
+          throw error;
+        }
+      },
+      updateGroup: async (groupId: string, name: string) => {
+        set({ loading: true, error: null });
+        try {
+          await mockApi.updateGroup(groupId, name);
+          set(state => ({
+            groups: state.groups.map(g => 
+              g.id === groupId ? { ...g, name } : g
+            ),
+            loading: false
+          }));
+        } catch (error) {
+          console.error('Error updating group:', error);
+          set({ 
+            error: error instanceof Error ? error.message : 'Failed to update group',
+            loading: false 
+          });
+          throw error;
+        }
+      },
+      deleteGroup: async (groupId: string) => {
+        set({ loading: true, error: null });
+        try {
+          await mockApi.deleteGroup(groupId);
+          set(state => ({
+            groups: state.groups.filter(g => g.id !== groupId),
+            loading: false
+          }));
+        } catch (error) {
+          console.error('Error deleting group:', error);
+          set({ 
+            error: error instanceof Error ? error.message : 'Failed to delete group',
+            loading: false 
+          });
+          throw error;
+        }
+      },
+      addMember: async (groupId: string, email: string) => {
+        set({ loading: true, error: null });
+        try {
+          const updatedGroup = await mockApi.addMember(groupId, email);
+          set(state => ({
+            groups: state.groups.map(g => 
+              g.id === groupId ? updatedGroup : g
+            ),
+            loading: false
+          }));
+        } catch (error) {
+          console.error('Error adding member:', error);
+          set({ 
+            error: error instanceof Error ? error.message : 'Failed to add member',
+            loading: false 
+          });
+          throw error;
+        }
+      },
+    }),
+    {
+      name: 'group-storage',
+      partialize: (state) => ({ groups: state.groups }),
+    }
+  )
+);
 
 export const useExpenseStore = create<ExpenseState>((set) => ({
   expenses: [],
+  isLoading: false,
+  error: null,
   fetchExpenses: async (groupId: string) => {
-    const expenses = await mockApi.getExpenses(groupId);
-    set({ expenses });
+    set({ isLoading: true, error: null });
+    try {
+      const expenses = await mockApi.getExpenses(groupId);
+      set({ expenses, isLoading: false });
+    } catch (error) {
+      set({ error: (error as Error).message, isLoading: false });
+    }
   },
-  createExpense: async (expense) => {
-    const newExpense = await mockApi.createExpense(expense);
-    set((state) => ({ expenses: [...state.expenses, newExpense] }));
+  addExpense: async (expense) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newExpense = await mockApi.createExpense(expense);
+      set((state) => ({ expenses: [...state.expenses, newExpense], isLoading: false }));
+    } catch (error) {
+      set({ error: (error as Error).message, isLoading: false });
+    }
   },
 }));
 

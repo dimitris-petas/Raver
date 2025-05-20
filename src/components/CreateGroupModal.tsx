@@ -1,7 +1,8 @@
 import React, { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useGroupStore, useAuthStore } from '../store';
+import { mockApi } from '../mock/server';
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -12,20 +13,42 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
   const { createGroup } = useGroupStore();
   const { user } = useAuthStore();
   const [name, setName] = useState('');
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [memberEmails, setMemberEmails] = useState<string[]>([]);
+  const [newEmail, setNewEmail] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
-    await createGroup(name, [user.id, ...selectedMembers]);
-    onClose();
-    resetForm();
+    try {
+      const group = await createGroup(name, [user.id]);
+      // Add members after group creation
+      for (const email of memberEmails) {
+        await mockApi.addMember(group.id, email);
+      }
+      onClose();
+      resetForm();
+    } catch (error) {
+      console.error('Error creating group:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
   const resetForm = () => {
     setName('');
-    setSelectedMembers([]);
+    setMemberEmails([]);
+    setNewEmail('');
+  };
+
+  const addMemberEmail = () => {
+    if (newEmail && !memberEmails.includes(newEmail)) {
+      setMemberEmails([...memberEmails, newEmail]);
+      setNewEmail('');
+    }
+  };
+
+  const removeMemberEmail = (email: string) => {
+    setMemberEmails(memberEmails.filter(e => e !== email));
   };
 
   return (
@@ -85,28 +108,42 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Add Members
+                      Add Members by Email
                     </label>
                     <div className="space-y-2">
-                      {/* In a real app, this would be a searchable user list */}
-                      <div className="flex items-center space-x-2">
+                      <div className="flex gap-2">
                         <input
-                          type="checkbox"
-                          id="member1"
-                          className="form-checkbox text-primary-600"
-                          checked={selectedMembers.includes('2')}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedMembers([...selectedMembers, '2']);
-                            } else {
-                              setSelectedMembers(selectedMembers.filter(id => id !== '2'));
-                            }
-                          }}
+                          type="email"
+                          className="input flex-1"
+                          placeholder="Enter email address"
+                          value={newEmail}
+                          onChange={(e) => setNewEmail(e.target.value)}
                         />
-                        <label htmlFor="member1" className="text-sm text-gray-600">
-                          Jane Smith
-                        </label>
+                        <button
+                          type="button"
+                          onClick={addMemberEmail}
+                          className="btn btn-secondary"
+                        >
+                          <PlusIcon className="h-5 w-5" />
+                        </button>
                       </div>
+                      
+                      {memberEmails.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {memberEmails.map((email) => (
+                            <div key={email} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                              <span className="text-sm text-gray-600">{email}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeMemberEmail(email)}
+                                className="text-gray-400 hover:text-gray-500"
+                              >
+                                <XMarkIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 

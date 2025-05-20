@@ -16,22 +16,54 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted');
     setError('');
+
+    // Validate form data
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+      setError('All fields are required');
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
 
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await register(formData);
-      navigate('/');
+      console.log('Attempting registration...');
+      const response = await register(formData.email, formData.password, formData.name);
+      console.log('Registration response:', response);
+      
+      // Clear form data
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+      });
+      
+      console.log('Navigating to home...');
+      window.location.href = '/'; // Force a full page navigation
     } catch (err) {
-      setError('Failed to create account');
-    } finally {
+      console.error('Registration error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create account');
       setIsLoading(false);
     }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   return (
@@ -50,12 +82,14 @@ const Register = () => {
               </label>
               <input
                 id="name"
+                name="name"
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={handleInputChange}
                 className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors"
                 placeholder="Enter your name"
+                disabled={isLoading}
               />
             </div>
 
@@ -65,12 +99,14 @@ const Register = () => {
               </label>
               <input
                 id="email"
+                name="email"
                 type="email"
                 required
                 value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                onChange={handleInputChange}
                 className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors"
                 placeholder="Enter your email"
+                disabled={isLoading}
               />
             </div>
 
@@ -80,12 +116,14 @@ const Register = () => {
               </label>
               <input
                 id="password"
+                name="password"
                 type="password"
                 required
                 value={formData.password}
-                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                onChange={handleInputChange}
                 className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors"
                 placeholder="Create a password"
+                disabled={isLoading}
               />
             </div>
 
@@ -95,12 +133,14 @@ const Register = () => {
               </label>
               <input
                 id="confirmPassword"
+                name="confirmPassword"
                 type="password"
                 required
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                onChange={handleInputChange}
                 className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors"
                 placeholder="Confirm your password"
+                disabled={isLoading}
               />
             </div>
           </div>

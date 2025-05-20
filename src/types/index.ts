@@ -16,7 +16,9 @@ export interface Group {
 export interface GroupMember {
   id: string;
   name: string;
+  email: string;
   balance: number;
+  avatar?: string;
 }
 
 export interface Expense {

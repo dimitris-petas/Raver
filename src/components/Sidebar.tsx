@@ -34,7 +34,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   };
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-200 shadow-sm flex flex-col justify-between z-30 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+    <aside className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-200 shadow-sm flex flex-col justify-between z-10 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Logo and App Name */}
       <div>
         <Link to="/" className={`flex items-center h-24 border-b border-gray-100 group ${isCollapsed ? 'justify-center' : 'justify-center'}`}>
@@ -79,21 +79,23 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
       </button>
 
       {/* User Profile */}
-      <div className="border-t border-gray-100 p-3">
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
-          <img
-            src={user?.avatar || 'https://via.placeholder.com/32'}
-            alt="avatar"
-            className="w-8 h-8 rounded-full border-2 border-[#d417c8]/30"
-          />
-          {!isCollapsed && (
-            <div className="ml-2">
-              <div className="text-sm font-medium text-gray-900">{user?.name || 'User'}</div>
-              <div className="text-xs text-gray-500">X Company</div>
-            </div>
-          )}
+      {user && (
+        <div className="border-t border-gray-100 p-3">
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
+            <img
+              src={user.avatar || 'https://via.placeholder.com/32'}
+              alt={user.name}
+              className="w-8 h-8 rounded-full border-2 border-[#d417c8]/30"
+            />
+            {!isCollapsed && (
+              <div className="ml-2">
+                <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                <div className="text-xs text-gray-500">{user.email}</div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 } 

@@ -33,15 +33,28 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
-  const { groups, fetchGroups } = useGroupStore();
-  const { expenses, fetchExpenses } = useExpenseStore();
+  const { groups, fetchGroups, isLoading: groupsLoading } = useGroupStore();
+  const { expenses, fetchExpenses, isLoading: expensesLoading } = useExpenseStore();
   const [timeRange, setTimeRange] = useState('week');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchGroups();
-    // Fetch expenses for all groups
-    Promise.all(groups.map(group => fetchExpenses(group.id)));
-  }, [fetchGroups, fetchExpenses, groups]);
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        await fetchGroups();
+        if (groups.length > 0) {
+          await Promise.all(groups.map(group => fetchExpenses(group.id)));
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [fetchGroups, fetchExpenses]);
 
   // Calculate total balance
   const totalBalance = groups.reduce((sum, group) => {
@@ -127,6 +140,14 @@ const Dashboard = () => {
     };
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#d417c8]"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -135,8 +156,18 @@ const Dashboard = () => {
           <p className="text-2xl font-bold text-gray-900">
             ${Math.abs(totalBalance).toFixed(2)}
           </p>
-          <p className="text-sm text-gray-500">
-            {totalBalance >= 0 ? 'You are owed' : 'You owe'}
+          <p className={`text-sm ${
+            totalBalance === 0 
+              ? 'text-gray-500' 
+              : totalBalance > 0 
+                ? 'text-emerald-600' 
+                : 'text-red-600'
+          }`}>
+            {totalBalance === 0 
+              ? 'No balance' 
+              : totalBalance > 0 
+                ? 'You are owed' 
+                : 'You owe'}
           </p>
         </div>
 
@@ -272,10 +303,10 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium text-[#d417c8]">
+                  <p className={`font-medium ${group.members.find(m => m.id === 'current-user-id')?.balance ?? 0 >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     ${Math.abs(group.members.find(m => m.id === 'current-user-id')?.balance ?? 0).toFixed(2)}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className={`text-sm ${group.members.find(m => m.id === 'current-user-id')?.balance ?? 0 >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {group.members.find(m => m.id === 'current-user-id')?.balance ?? 0 >= 0 ? 'You are owed' : 'You owe'}
                   </p>
                 </div>

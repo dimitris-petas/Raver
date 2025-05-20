@@ -10,34 +10,55 @@ import AddExpense from './pages/AddExpense';
 import Settlements from './pages/Settlements';
 import Settings from './pages/Settings';
 import Layout from './components/Layout';
+import PrivateRoute from './components/PrivateRoute';
+import Profile from './pages/Profile';
 
-const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
+const PrivateRouteComponent = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuthStore();
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
+  console.log('PrivateRoute - Current user:', user);
+  
+  if (!user) {
+    console.log('PrivateRoute - No user, redirecting to login');
+    return <Navigate to="/login" replace />;
+  }
+  
+  console.log('PrivateRoute - User authenticated, rendering children');
+  return <Layout>{children}</Layout>;
 };
 
 function App() {
+  const { user } = useAuthStore();
+
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={!user ? <Login /> : <Navigate to="/groups" />} />
+        <Route path="/register" element={!user ? <Register /> : <Navigate to="/groups" />} />
         <Route
-          path="/"
+          path="/groups"
           element={
             <PrivateRoute>
-              <Layout />
+              <Groups />
             </PrivateRoute>
           }
-        >
-          <Route index element={<Dashboard />} />
-          <Route path="groups" element={<Groups />} />
-          <Route path="groups/:groupId" element={<Group />} />
-          <Route path="expenses/new" element={<AddExpense />} />
-          <Route path="settlements" element={<Settlements />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        />
+        <Route
+          path="/groups/:groupId"
+          element={
+            <PrivateRoute>
+              <Group />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <Profile />
+            </PrivateRoute>
+          }
+        />
+        <Route path="/" element={<Navigate to="/groups" />} />
       </Routes>
     </Router>
   );
