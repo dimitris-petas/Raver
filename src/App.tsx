@@ -11,18 +11,15 @@ import Settlements from './pages/Settlements';
 import Settings from './pages/Settings';
 import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
-import Profile from './pages/Profile';
+import Profile from './pages/Profile/index';
 
 const PrivateRouteComponent = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuthStore();
-  console.log('PrivateRoute - Current user:', user);
   
   if (!user) {
-    console.log('PrivateRoute - No user, redirecting to login');
     return <Navigate to="/login" replace />;
   }
   
-  console.log('PrivateRoute - User authenticated, rendering children');
   return <Layout>{children}</Layout>;
 };
 
@@ -32,33 +29,65 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={!user ? <Login /> : <Navigate to="/groups" />} />
-        <Route path="/register" element={!user ? <Register /> : <Navigate to="/groups" />} />
+        <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
+        <Route path="/register" element={!user ? <Register /> : <Navigate to="/dashboard" />} />
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRouteComponent>
+              <Dashboard />
+            </PrivateRouteComponent>
+          }
+        />
         <Route
           path="/groups"
           element={
-            <PrivateRoute>
+            <PrivateRouteComponent>
               <Groups />
-            </PrivateRoute>
+            </PrivateRouteComponent>
           }
         />
         <Route
           path="/groups/:groupId"
           element={
-            <PrivateRoute>
+            <PrivateRouteComponent>
               <Group />
-            </PrivateRoute>
+            </PrivateRouteComponent>
+          }
+        />
+        <Route
+          path="/groups/:groupId/add-expense"
+          element={
+            <PrivateRouteComponent>
+              <AddExpense />
+            </PrivateRouteComponent>
+          }
+        />
+        <Route
+          path="/groups/:groupId/settlements"
+          element={
+            <PrivateRouteComponent>
+              <Settlements />
+            </PrivateRouteComponent>
           }
         />
         <Route
           path="/profile"
           element={
-            <PrivateRoute>
+            <PrivateRouteComponent>
               <Profile />
-            </PrivateRoute>
+            </PrivateRouteComponent>
           }
         />
-        <Route path="/" element={<Navigate to="/groups" />} />
+        <Route
+          path="/settings"
+          element={
+            <PrivateRouteComponent>
+              <Settings />
+            </PrivateRouteComponent>
+          }
+        />
+        <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
     </Router>
   );
