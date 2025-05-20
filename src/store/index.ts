@@ -22,7 +22,8 @@ interface GroupState {
   createGroup: (name: string, memberIds: string[]) => Promise<Group>;
   updateGroup: (groupId: string, name: string) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;
-  addMember: (groupId: string, email: string) => Promise<void>;
+  addMember: (groupId: string, email: string, name?: string) => Promise<void>;
+  updateGroupImage: (groupId: string, image: string) => Promise<void>;
 }
 
 interface ExpenseState {
@@ -170,21 +171,37 @@ export const useGroupStore = create<GroupState>()(
           throw error;
         }
       },
-      addMember: async (groupId: string, email: string) => {
+      addMember: async (groupId: string, email: string, name?: string) => {
         set({ loading: true, error: null });
         try {
-          const updatedGroup = await mockApi.addMember(groupId, email);
+          const updatedGroup = await mockApi.addMember(groupId, email, name);
           set(state => ({
-            groups: state.groups.map(g => 
+            groups: state.groups.map(g =>
               g.id === groupId ? updatedGroup : g
             ),
             loading: false
           }));
         } catch (error) {
           console.error('Error adding member:', error);
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to add member',
-            loading: false 
+            loading: false
+          });
+          throw error;
+        }
+      },
+      updateGroupImage: async (groupId: string, image: string) => {
+        set({ loading: true, error: null });
+        try {
+          const updatedGroup = await mockApi.updateGroupImage(groupId, image);
+          set(state => ({
+            groups: state.groups.map(g => g.id === groupId ? updatedGroup : g),
+            loading: false
+          }));
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Failed to update group image',
+            loading: false
           });
           throw error;
         }

@@ -11,11 +11,12 @@ export interface Group {
   members: GroupMember[];
   createdAt: string;
   updatedAt: string;
+  image?: string;
 }
 
 export interface GroupMember {
   id: string;
-  name: string;
+  name?: string;
   email: string;
   balance: number;
   avatar?: string;
@@ -29,7 +30,8 @@ export interface Expense {
   paidBy: string;
   shares: ExpenseShare[];
   groupId: string;
-  category?: string;
+  category: string;
+  note?: string;
   status?: 'pending' | 'completed';
 }
 

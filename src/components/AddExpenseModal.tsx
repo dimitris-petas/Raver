@@ -18,6 +18,9 @@ export default function AddExpenseModal({ isOpen, onClose, groupId, members }: A
   const [paidBy, setPaidBy] = useState('');
   const [splitType, setSplitType] = useState<'equal' | 'weighted'>('equal');
   const [weights, setWeights] = useState<Record<string, number>>({});
+  const [category, setCategory] = useState('General');
+  const [note, setNote] = useState('');
+  const [selectedMembers, setSelectedMembers] = useState(members.map(m => m.id));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,13 +30,15 @@ export default function AddExpenseModal({ isOpen, onClose, groupId, members }: A
       amount: parseFloat(amount),
       date: new Date().toISOString(),
       paidBy,
-      shares: members.map(member => ({
+      shares: members.filter(m => selectedMembers.includes(m.id)).map(member => ({
         userId: member.id,
         amount: splitType === 'equal'
-          ? parseFloat(amount) / members.length
+          ? parseFloat(amount) / selectedMembers.length
           : (parseFloat(amount) * (weights[member.id] || 1)) / Object.values(weights).reduce((a, b) => a + b, 0)
       })),
-      groupId
+      groupId,
+      category,
+      note,
     };
 
     await createExpense(expense);
@@ -47,6 +52,15 @@ export default function AddExpenseModal({ isOpen, onClose, groupId, members }: A
     setPaidBy('');
     setSplitType('equal');
     setWeights({});
+    setCategory('General');
+    setNote('');
+    setSelectedMembers(members.map(m => m.id));
+  };
+
+  const handleMemberToggle = (id: string) => {
+    setSelectedMembers(prev =>
+      prev.includes(id) ? prev.filter(mid => mid !== id) : [...prev, id]
+    );
   };
 
   return (
@@ -189,6 +203,59 @@ export default function AddExpenseModal({ isOpen, onClose, groupId, members }: A
                       ))}
                     </div>
                   )}
+
+                  <div>
+                    <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+                      Category
+                    </label>
+                    <select
+                      id="category"
+                      className="input mt-1"
+                      value={category}
+                      onChange={e => setCategory(e.target.value)}
+                      required
+                    >
+                      <option value="Food">Food</option>
+                      <option value="Travel">Travel</option>
+                      <option value="Utilities">Utilities</option>
+                      <option value="Entertainment">Entertainment</option>
+                      <option value="Other">Other</option>
+                      <option value="General">General</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="note" className="block text-sm font-medium text-gray-700">
+                      Note (optional)
+                    </label>
+                    <textarea
+                      id="note"
+                      className="input mt-1"
+                      value={note}
+                      onChange={e => setNote(e.target.value)}
+                      rows={2}
+                      placeholder="Add a note or description (optional)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Split between</label>
+                    <div className="flex flex-wrap gap-2">
+                      {members.map(member => (
+                        <button
+                          type="button"
+                          key={member.id}
+                          onClick={() => handleMemberToggle(member.id)}
+                          className={`px-3 py-1 rounded-full border transition-all text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d417c8] ${selectedMembers.includes(member.id)
+                            ? 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300 shadow'
+                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+                        >
+                          {member.name}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Select who shares this expense</p>
+                  </div>
 
                   <div className="mt-6">
                     <button type="submit" className="btn btn-primary w-full">

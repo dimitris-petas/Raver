@@ -2,6 +2,29 @@ import React, { useState } from 'react';
 import { useAuthStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 
+// Helper to get initials
+function getInitials(nameOrEmail: string) {
+  const parts = nameOrEmail.split(/\s+|@/);
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() || '';
+  return (parts[0][0] || '') + (parts[1][0] || '');
+}
+
+// Helper to get color
+function getAvatarColor(id: string) {
+  const colors = [
+    'bg-fuchsia-400', 'bg-cyan-400', 'bg-green-400', 'bg-yellow-400', 'bg-pink-400', 'bg-purple-400', 'bg-blue-400', 'bg-orange-400'
+  ];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function isRealAvatar(avatar?: string) {
+  if (!avatar) return false;
+  if (avatar.includes('pravatar.cc') || avatar.includes('placeholder.com')) return false;
+  return true;
+}
+
 const Settings = () => {
   const { user, updateProfile, logout } = useAuthStore();
   const navigate = useNavigate();
@@ -121,11 +144,17 @@ const Settings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Avatar
                 </label>
-                <img
-                  src={user?.avatar || 'https://via.placeholder.com/100'}
-                  alt="avatar"
-                  className="w-16 h-16 rounded-full border-2 border-fuchsia-300"
-                />
+                {isRealAvatar(user?.avatar) ? (
+                  <img
+                    src={user?.avatar}
+                    alt="avatar"
+                    className="w-16 h-16 rounded-full border-2 border-fuchsia-300"
+                  />
+                ) : (
+                  <span className={`w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-2xl ${getAvatarColor(user?.id || '')}`}>
+                    {getInitials(user?.name || user?.email || '')}
+                  </span>
+                )}
               </div>
             </div>
           )}

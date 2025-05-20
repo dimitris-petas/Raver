@@ -12,6 +12,23 @@ export default function Groups() {
     fetchGroups();
   }, [fetchGroups]);
 
+  // Helper to get initials
+  function getInitials(name: string) {
+    const parts = name.split(/\s+/);
+    if (parts.length === 1) return parts[0][0]?.toUpperCase() || '';
+    return (parts[0][0] || '') + (parts[1][0] || '');
+  }
+
+  // Helper to get color
+  function getAvatarColor(id: string) {
+    const colors = [
+      'bg-fuchsia-400', 'bg-cyan-400', 'bg-green-400', 'bg-yellow-400', 'bg-pink-400', 'bg-purple-400', 'bg-blue-400', 'bg-orange-400'
+    ];
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="flex justify-between items-center mb-6">
@@ -43,7 +60,20 @@ export default function Groups() {
               to={`/groups/${group.id}`}
               className="card hover:shadow-md transition-shadow p-6"
             >
-              <h3 className="text-lg font-semibold text-fuchsia-700 mb-2">{group.name}</h3>
+              <div className="flex items-center gap-3 mb-2">
+                {group.image ? (
+                  <img
+                    src={group.image}
+                    alt={group.name}
+                    className="w-12 h-12 rounded-full border-2 border-fuchsia-300 object-cover"
+                  />
+                ) : (
+                  <span className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl ${getAvatarColor(group.id)}`}>
+                    {getInitials(group.name)}
+                  </span>
+                )}
+                <h3 className="text-lg font-semibold text-fuchsia-700">{group.name}</h3>
+              </div>
               <div className="space-y-2">
                 {group.members.map((member) => (
                   <div

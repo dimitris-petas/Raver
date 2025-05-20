@@ -13,6 +13,8 @@ export default function AddExpense() {
     amount: '',
     paidBy: '',
     shares: [] as { userId: string; amount: number }[],
+    category: 'General',
+    note: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,6 +23,7 @@ export default function AddExpense() {
       await addExpense({
         ...formData,
         amount: parseFloat(formData.amount),
+        date: new Date().toISOString(),
       });
       navigate('/');
     } catch (error) {
@@ -110,6 +113,38 @@ export default function AddExpense() {
                 </option>
               ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Category
+          </label>
+          <select
+            value={formData.category}
+            onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
+            className="input"
+            required
+          >
+            <option value="Food">Food</option>
+            <option value="Travel">Travel</option>
+            <option value="Utilities">Utilities</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Other">Other</option>
+            <option value="General">General</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Note (optional)
+          </label>
+          <textarea
+            value={formData.note}
+            onChange={e => setFormData(prev => ({ ...prev, note: e.target.value }))}
+            className="input"
+            rows={2}
+            placeholder="Add a note or description (optional)"
+          />
         </div>
 
         {formData.groupId && (

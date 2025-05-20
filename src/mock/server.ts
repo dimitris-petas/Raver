@@ -198,18 +198,18 @@ export const mockApi = {
   createExpense: async (expense: Omit<Expense, 'id'>): Promise<Expense> => {
     const currentUser = getCurrentUser();
     if (!currentUser) throw new Error('Not authenticated');
-    
     const group = groups.find(g => g.id === expense.groupId);
     if (!group) throw new Error('Group not found');
-    
-    // Check if user is a member of the group by ID or email
     if (!group.members.some(m => m.id === currentUser.id || m.email === currentUser.email)) {
       throw new Error('Not authorized to create expenses for this group');
     }
-    
+    if (!expense.category) {
+      throw new Error('Expense category is required');
+    }
     const newExpense: Expense = {
       ...expense,
       id: uuidv4(),
+      note: expense.note || '',
     };
     expenses.push(newExpense);
     saveData('mock_expenses', expenses);
@@ -270,37 +270,28 @@ export const mockApi = {
     return user;
   },
 
-  addMember: async (groupId: string, email: string): Promise<Group> => {
+  addMember: async (groupId: string, email: string, name?: string): Promise<Group> => {
     const currentUser = getCurrentUser();
     if (!currentUser) throw new Error('Not authenticated');
-    
     const group = groups.find(g => g.id === groupId);
     if (!group) throw new Error('Group not found');
-
-    // Check if user is a member of the group by ID or email
     if (!group.members.some(m => m.id === currentUser.id || m.email === currentUser.email)) {
       throw new Error('Not authorized to add members to this group');
     }
-
-    // Check if member already exists
     if (group.members.some(m => m.email === email)) {
       throw new Error('Member already exists in the group');
     }
-
-    // Find or create user
     let user = users.find(u => u.email === email);
     if (!user) {
-      // Create a new user with the email
       user = {
         id: uuidv4(),
         email,
-        name: email.split('@')[0], // Use email username as initial name
+        name: name || email.split('@')[0],
         avatar: `https://i.pravatar.cc/150?u=${email}`
       };
       users.push(user);
       saveData('mock_users', users);
     }
-
     const newMember: GroupMember = {
       id: user.id,
       name: user.name,
@@ -308,7 +299,6 @@ export const mockApi = {
       balance: 0,
       avatar: user.avatar
     };
-
     group.members.push(newMember);
     saveData('mock_groups', groups);
     return group;
@@ -338,5 +328,19 @@ export const mockApi = {
     const currentUser = getCurrentUser();
     if (!currentUser) throw new Error('Not authenticated');
     return users;
+  },
+
+  updateGroupImage: async (groupId: string, image: string): Promise<Group> => {
+    const currentUser = getCurrentUser();
+    if (!currentUser) throw new Error('Not authenticated');
+    const group = groups.find(g => g.id === groupId);
+    if (!group) throw new Error('Group not found');
+    if (!group.members.some(m => m.id === currentUser.id)) {
+      throw new Error('Not authorized to update this group');
+    }
+    group.image = image;
+    group.updatedAt = new Date().toISOString();
+    saveData('mock_groups', groups);
+    return group;
   },
 }; 

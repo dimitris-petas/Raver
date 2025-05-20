@@ -87,6 +87,22 @@ function App() {
             </PrivateRouteComponent>
           }
         />
+        <Route
+          path="/expenses/new"
+          element={
+            <PrivateRouteComponent>
+              <AddExpense />
+            </PrivateRouteComponent>
+          }
+        />
+        <Route
+          path="/settlements"
+          element={
+            <PrivateRouteComponent>
+              <Settlements />
+            </PrivateRouteComponent>
+          }
+        />
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
     </Router>
