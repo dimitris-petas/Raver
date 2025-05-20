@@ -1,4 +1,4 @@
-# Splitwise Clone
+# Raver
 
 A modern web application for splitting expenses with friends, built with React, TypeScript, and Tailwind CSS.
 
