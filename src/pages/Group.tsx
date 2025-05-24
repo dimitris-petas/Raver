@@ -7,6 +7,8 @@ import { PlusIcon, ArrowRightIcon, PencilIcon, TrashIcon, CheckCircleIcon, UserP
 import { format } from 'date-fns';
 import AddExpenseModal from '../components/AddExpenseModal';
 import { useAuthStore } from '../store';
+import CategoryDropdown from '../components/CategoryDropdown';
+import SingleSelectDropdown, { SingleSelectOption } from '../components/SingleSelectDropdown';
 
 // Helper to generate avatar color
 const avatarColors = [
@@ -362,7 +364,12 @@ const Group = () => {
 
       {/* Rename Group Modal */}
       {isRenamingGroup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          onClick={e => {
+            if (e.target === e.currentTarget) setIsRenamingGroup(false);
+          }}
+        >
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Rename Group</h2>
@@ -407,7 +414,12 @@ const Group = () => {
 
       {/* Add Member Modal */}
       {isAddingMember && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          onClick={e => {
+            if (e.target === e.currentTarget) setIsAddingMember(false);
+          }}
+        >
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Add Member</h2>
@@ -465,7 +477,12 @@ const Group = () => {
 
       {/* Add Expense Modal */}
       {isAddingExpense && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          onClick={e => {
+            if (e.target === e.currentTarget) setIsAddingExpense(false);
+          }}
+        >
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Add Expense</h2>
@@ -511,20 +528,10 @@ const Group = () => {
                 <label htmlFor="category" className="block text-sm font-medium text-gray-700">
                   Category
                 </label>
-                <select
-                  id="category"
+                <CategoryDropdown
                   value={newExpense.category || 'General'}
-                  onChange={(e) => setNewExpense(prev => ({ ...prev, category: e.target.value }))}
-                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#d417c8] focus:border-[#d417c8]"
-                  required
-                >
-                  <option value="Food">Food</option>
-                  <option value="Travel">Travel</option>
-                  <option value="Utilities">Utilities</option>
-                  <option value="Entertainment">Entertainment</option>
-                  <option value="Other">Other</option>
-                  <option value="General">General</option>
-                </select>
+                  onChange={v => setNewExpense(prev => ({ ...prev, category: v }))}
+                />
               </div>
               <div>
                 <label htmlFor="note" className="block text-sm font-medium text-gray-700">
@@ -543,18 +550,18 @@ const Group = () => {
                 <label htmlFor="paidBy" className="block text-sm font-medium text-gray-700">
                   Paid By
                 </label>
-                <select
-                  id="paidBy"
+                <SingleSelectDropdown
+                  options={group.members.map(member => ({
+                    value: member.id,
+                    label: member.name || member.email || '',
+                    icon: <span className={`w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-xs ${'bg-fuchsia-400'}`}>{member.name ? member.name[0] : '?'}</span>,
+                    description: member.email,
+                  }))}
                   value={newExpense.paidBy}
-                  onChange={(e) => setNewExpense(prev => ({ ...prev, paidBy: e.target.value }))}
-                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#d417c8] focus:border-[#d417c8]"
-                >
-                  {group.members.map(member => (
-                    <option key={member.id} value={member.id}>
-                      {member.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={v => setNewExpense(prev => ({ ...prev, paidBy: v }))}
+                  placeholder="Select who paid"
+                  label="Paid By"
+                />
               </div>
               <div className="flex justify-end gap-4">
                 <button
@@ -575,7 +582,12 @@ const Group = () => {
 
       {/* Delete Group Modal */}
       {isDeletingGroup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          onClick={e => {
+            if (e.target === e.currentTarget) setIsDeletingGroup(false);
+          }}
+        >
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-red-600">Delete Group</h2>
@@ -685,8 +697,18 @@ const Group = () => {
                 </div>
               </div>
               <div className="text-right">
-                <p className={`font-medium ${member.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {member.balance === 0 ? '$0.00' : `$${Math.abs(member.balance).toFixed(2)}`}
+                <p className={`font-medium ${
+                  member.balance > 0
+                    ? 'text-green-600'
+                    : member.balance < 0
+                    ? 'text-red-600'
+                    : 'text-black font-semibold'
+                }`}>
+                  {member.balance === 0 || Object.is(member.balance, -0)
+                    ? '$0.00'
+                    : member.balance > 0
+                    ? `+$${member.balance.toFixed(2)}`
+                    : `-$${Math.abs(member.balance).toFixed(2)}`}
                 </p>
                 <p className={`text-sm ${member.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {member.balance >= 0 ? 'is owed' : 'owes'}
@@ -731,32 +753,25 @@ const Group = () => {
         <div className="flex flex-wrap gap-4 mb-4 items-end">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
-            <select
+            <CategoryDropdown
               value={expenseCategory}
-              onChange={e => setExpenseCategory(e.target.value)}
-              className="input"
-            >
-              <option value="">All</option>
-              <option value="Food">Food</option>
-              <option value="Travel">Travel</option>
-              <option value="Utilities">Utilities</option>
-              <option value="Entertainment">Entertainment</option>
-              <option value="Other">Other</option>
-              <option value="General">General</option>
-            </select>
+              onChange={v => setExpenseCategory(v)}
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Paid By</label>
-            <select
+            <SingleSelectDropdown
+              options={group.members.map(member => ({
+                value: member.id,
+                label: member.name || member.email || '',
+                icon: <span className={`w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-xs ${'bg-fuchsia-400'}`}>{member.name ? member.name[0] : '?'}</span>,
+                description: member.email,
+              }))}
               value={expenseMember}
-              onChange={e => setExpenseMember(e.target.value)}
-              className="input"
-            >
-              <option value="">All</option>
-              {group.members.map(m => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
+              onChange={v => setExpenseMember(v)}
+              placeholder="All"
+              label="Paid By"
+            />
           </div>
           <div className="flex-1 min-w-[180px]">
             <label className="block text-xs font-medium text-gray-500 mb-1">Search</label>

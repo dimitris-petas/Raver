@@ -3,6 +3,8 @@ import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useExpenseStore } from '../store';
 import { Expense, GroupMember } from '../types';
+import CategoryDropdown from './CategoryDropdown';
+import MemberMultiSelect from './MemberMultiSelect';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -12,7 +14,7 @@ interface AddExpenseModalProps {
 }
 
 export default function AddExpenseModal({ isOpen, onClose, groupId, members }: AddExpenseModalProps) {
-  const { createExpense } = useExpenseStore();
+  const { addExpense } = useExpenseStore();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [paidBy, setPaidBy] = useState('');
@@ -41,7 +43,7 @@ export default function AddExpenseModal({ isOpen, onClose, groupId, members }: A
       note,
     };
 
-    await createExpense(expense);
+    await addExpense(expense);
     onClose();
     resetForm();
   };
@@ -138,20 +140,12 @@ export default function AddExpenseModal({ isOpen, onClose, groupId, members }: A
                     <label htmlFor="paidBy" className="block text-sm font-medium text-gray-700">
                       Paid by
                     </label>
-                    <select
-                      id="paidBy"
-                      className="input mt-1"
-                      value={paidBy}
-                      onChange={(e) => setPaidBy(e.target.value)}
-                      required
-                    >
-                      <option value="">Select a member</option>
-                      {members.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.name}
-                        </option>
-                      ))}
-                    </select>
+                    <MemberMultiSelect
+                      members={members}
+                      selected={paidBy ? [paidBy] : []}
+                      onChange={ids => setPaidBy(ids[0] || '')}
+                      label="Select who paid"
+                    />
                   </div>
 
                   <div>
@@ -208,20 +202,7 @@ export default function AddExpenseModal({ isOpen, onClose, groupId, members }: A
                     <label htmlFor="category" className="block text-sm font-medium text-gray-700">
                       Category
                     </label>
-                    <select
-                      id="category"
-                      className="input mt-1"
-                      value={category}
-                      onChange={e => setCategory(e.target.value)}
-                      required
-                    >
-                      <option value="Food">Food</option>
-                      <option value="Travel">Travel</option>
-                      <option value="Utilities">Utilities</option>
-                      <option value="Entertainment">Entertainment</option>
-                      <option value="Other">Other</option>
-                      <option value="General">General</option>
-                    </select>
+                    <CategoryDropdown value={category} onChange={setCategory} />
                   </div>
 
                   <div>
@@ -240,20 +221,12 @@ export default function AddExpenseModal({ isOpen, onClose, groupId, members }: A
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Split between</label>
-                    <div className="flex flex-wrap gap-2">
-                      {members.map(member => (
-                        <button
-                          type="button"
-                          key={member.id}
-                          onClick={() => handleMemberToggle(member.id)}
-                          className={`px-3 py-1 rounded-full border transition-all text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d417c8] ${selectedMembers.includes(member.id)
-                            ? 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300 shadow'
-                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
-                        >
-                          {member.name}
-                        </button>
-                      ))}
-                    </div>
+                    <MemberMultiSelect
+                      members={members}
+                      selected={selectedMembers}
+                      onChange={setSelectedMembers}
+                      label="Split between"
+                    />
                     <p className="text-xs text-gray-400 mt-1">Select who shares this expense</p>
                   </div>
 

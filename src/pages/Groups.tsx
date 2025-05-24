@@ -87,10 +87,12 @@ export default function Groups() {
                           ? 'text-green-600'
                           : member.balance < 0
                           ? 'text-red-600'
-                          : 'text-gray-600'
+                          : 'text-black font-semibold'
                       }`}
                     >
-                      {member.balance > 0
+                      {member.balance === 0 || Object.is(member.balance, -0)
+                        ? '$0.00'
+                        : member.balance > 0
                         ? `+$${member.balance.toFixed(2)}`
                         : `-$${Math.abs(member.balance).toFixed(2)}`}
                     </span>

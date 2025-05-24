@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGroupStore } from '../store';
 import { useExpenseStore } from '../store';
+import CategoryDropdown from '../components/CategoryDropdown';
+import MemberMultiSelect from '../components/MemberMultiSelect';
+import SingleSelectDropdown, { SingleSelectOption } from '../components/SingleSelectDropdown';
 
 export default function AddExpense() {
   const navigate = useNavigate();
@@ -16,6 +19,9 @@ export default function AddExpense() {
     category: 'General',
     note: '',
   });
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [category, setCategory] = useState('General');
+  const [paidBy, setPaidBy] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,19 +55,17 @@ export default function AddExpense() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Group
           </label>
-          <select
+          <SingleSelectDropdown
+            options={groups.map(group => ({
+              value: group.id,
+              label: group.name || '',
+              icon: group.image ? <img src={group.image} alt={group.name} className="w-5 h-5 rounded-full" /> : <span className={`w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-xs ${'bg-fuchsia-400'}`}>{group.name ? group.name[0] : '?'}</span>,
+            }))}
             value={formData.groupId}
-            onChange={(e) => setFormData(prev => ({ ...prev, groupId: e.target.value }))}
-            className="input"
-            required
-          >
-            <option value="">Select a group</option>
-            {groups.map(group => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
+            onChange={v => setFormData(prev => ({ ...prev, groupId: v }))}
+            placeholder="Select a group"
+            label="Group"
+          />
         </div>
 
         <div>
@@ -98,40 +102,25 @@ export default function AddExpense() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Paid by
           </label>
-          <select
-            value={formData.paidBy}
-            onChange={(e) => setFormData(prev => ({ ...prev, paidBy: e.target.value }))}
-            className="input"
-            required
-          >
-            <option value="">Select who paid</option>
-            {formData.groupId && groups
-              .find(g => g.id === formData.groupId)
-              ?.members.map(member => (
-                <option key={member.id} value={member.id}>
-                  {member.name}
-                </option>
-              ))}
-          </select>
+          <SingleSelectDropdown
+            options={(groups.find(g => g.id === formData.groupId)?.members || []).map(member => ({
+              value: member.id,
+              label: member.name || member.email || '',
+              icon: <span className={`w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-xs ${'bg-fuchsia-400'}`}>{member.name ? member.name[0] : '?'}</span>,
+              description: member.email,
+            }))}
+            value={paidBy}
+            onChange={v => setPaidBy(v)}
+            placeholder="Select who paid"
+            label="Paid by"
+          />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Category
           </label>
-          <select
-            value={formData.category}
-            onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
-            className="input"
-            required
-          >
-            <option value="Food">Food</option>
-            <option value="Travel">Travel</option>
-            <option value="Utilities">Utilities</option>
-            <option value="Entertainment">Entertainment</option>
-            <option value="Other">Other</option>
-            <option value="General">General</option>
-          </select>
+          <CategoryDropdown value={category} onChange={setCategory} />
         </div>
 
         <div>
@@ -147,51 +136,18 @@ export default function AddExpense() {
           />
         </div>
 
-        {formData.groupId && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Split between
-            </label>
-            <div className="space-y-2">
-              {groups
-                .find(g => g.id === formData.groupId)
-                ?.members.map(member => (
-                  <div key={member.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.shares.some(s => s.userId === member.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setFormData(prev => ({
-                            ...prev,
-                            shares: [...prev.shares, { userId: member.id, amount: 0 }],
-                          }));
-                        } else {
-                          setFormData(prev => ({
-                            ...prev,
-                            shares: prev.shares.filter(s => s.userId !== member.id),
-                          }));
-                        }
-                      }}
-                      className="rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500"
-                    />
-                    <span className="text-sm text-gray-700">{member.name}</span>
-                    {formData.shares.some(s => s.userId === member.id) && (
-                      <input
-                        type="number"
-                        value={formData.shares.find(s => s.userId === member.id)?.amount || 0}
-                        onChange={(e) => handleShareChange(member.id, parseFloat(e.target.value))}
-                        className="input w-24"
-                        step="0.01"
-                        min="0"
-                        required
-                      />
-                    )}
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Split between
+          </label>
+          <MemberMultiSelect
+            members={groups.find(g => g.id === formData.groupId)?.members || []}
+            selected={selectedMembers}
+            onChange={setSelectedMembers}
+            label="Split between"
+          />
+          <p className="text-xs text-gray-400 mt-1">Select who shares this expense</p>
+        </div>
 
         <div className="flex justify-end gap-3">
           <button
