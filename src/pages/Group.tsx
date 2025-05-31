@@ -5,10 +5,14 @@ import { useExpenseStore } from '../store';
 import { Expense, GroupMember } from '../types';
 import { PlusIcon, ArrowRightIcon, PencilIcon, TrashIcon, CheckCircleIcon, UserPlusIcon, XMarkIcon, MagnifyingGlassIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
-import AddExpenseModal from '../components/AddExpenseModal';
 import { useAuthStore } from '../store';
 import CategoryDropdown from '../components/CategoryDropdown';
 import SingleSelectDropdown, { SingleSelectOption } from '../components/SingleSelectDropdown';
+import DateRangePicker from '../components/DateRangePicker';
+import GroupBalancesTab from '../components/GroupBalancesTab';
+import GroupSpendingTab from '../components/GroupSpendingTab';
+import GroupSettingsTab from '../components/GroupSettingsTab';
+import AddEditExpenseModal from '../components/AddEditExpenseModal';
 
 // Helper to generate avatar color
 const avatarColors = [
@@ -111,6 +115,11 @@ const Group = () => {
   const [expenseCategory, setExpenseCategory] = useState('');
   const [expenseMember, setExpenseMember] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [activeTab, setActiveTab] = useState<'expenses'|'balances'|'spending'|'settings'>('expenses');
+  const [editExpense, setEditExpense] = useState<Expense|null>(null);
+  const [receiptModal, setReceiptModal] = useState<{open: boolean, url: string|null}>({open: false, url: null});
+  const [startDate, setStartDate] = useState<string | null>(null);
+  const [endDate, setEndDate] = useState<string | null>(null);
 
   const group = groups.find(g => g.id === groupId);
 
@@ -268,6 +277,9 @@ const Group = () => {
       (exp.note && exp.note.toLowerCase().includes(expenseSearch.toLowerCase()));
     return matchesCategory && matchesMember && matchesSearch;
   });
+
+  // Sort expenses newest-first
+  const sortedExpenses = [...filteredExpenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const handleGroupImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!group || !e.target.files || e.target.files.length === 0) return;
@@ -826,6 +838,72 @@ const Group = () => {
           {filteredExpenses.length === 0 && <div className="text-gray-400">No expenses found.</div>}
         </div>
       </div>
+
+      <div className="flex gap-2 mb-6">
+        <button className={`btn btn-sm ${activeTab==='expenses'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveTab('expenses')}>Expenses</button>
+        <button className={`btn btn-sm ${activeTab==='balances'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveTab('balances')}>Balances</button>
+        <button className={`btn btn-sm ${activeTab==='spending'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveTab('spending')}>Spending Over Time</button>
+        <button className={`btn btn-sm ${activeTab==='settings'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveTab('settings')}>Settings</button>
+      </div>
+      {activeTab==='expenses' && (
+        <>
+          {/* Expense Filters, Add/Edit, Export, List */}
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex gap-2">
+              <button className="btn btn-primary" onClick={()=>setIsAddingExpense(true)}>Add Expense</button>
+              <button className="btn btn-secondary" onClick={()=>{/* export CSV logic */}}>Export CSV</button>
+            </div>
+            <DateRangePicker startDate={startDate} endDate={endDate} onChange={(s,e)=>{setStartDate(s);setEndDate(e);}} />
+          </div>
+          <div className="space-y-4">
+            {sortedExpenses.map(expense => {
+              const paidByMe = expense.paidBy === user?.id;
+              const myShare = expense.shares.find(s=>s.userId===user?.id)?.amount || 0;
+              const label = paidByMe ? 'Lent' : 'Borrowed';
+              const labelColor = paidByMe ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+              return (
+                <div key={expense.id} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                  <div>
+                    <p className="font-medium text-gray-900">{expense.description}</p>
+                    <p className="text-sm text-gray-500">
+                      Paid by {paidByMe ? 'You' : group.members.find(m=>m.id===expense.paidBy)?.name || 'Someone'}
+                      {expense.category && <span className="ml-2 px-2 py-0.5 rounded bg-fuchsia-50 text-fuchsia-600 text-xs">{expense.category}</span>}
+                    </p>
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold ${labelColor}`}>{label} €{myShare.toFixed(2)} of €{expense.amount.toFixed(2)}</span>
+                    {expense.note && <p className="text-xs text-gray-500 italic">{expense.note}</p>}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    {expense.receiptUrl && (
+                      <img src={expense.receiptUrl ?? null} alt="Receipt" className="w-12 h-12 object-cover rounded cursor-pointer border" onClick={()=>setReceiptModal({open:true,url:expense.receiptUrl ?? null})} />
+                    )}
+                    <button className="btn btn-xs btn-secondary" onClick={()=>setEditExpense(expense)}>Edit</button>
+                  </div>
+                </div>
+              );
+            })}
+            {sortedExpenses.length === 0 && <div className="text-gray-400">No expenses found.</div>}
+          </div>
+          {/* Receipt Modal */}
+          {receiptModal.open && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={()=>setReceiptModal({open:false,url:null})}>
+              <img src={receiptModal.url ?? null} alt="Full Receipt" className="max-w-full max-h-full rounded shadow-lg" />
+            </div>
+          )}
+        </>
+      )}
+      {activeTab==='balances' && <GroupBalancesTab group={group} expenses={expenses} />}
+      {activeTab==='spending' && <GroupSpendingTab group={group} expenses={expenses} userId={user?.id} />}
+      {activeTab==='settings' && <GroupSettingsTab group={group} user={user} />}
+      {/* Add/Edit Expense Modal */}
+      {(isAddingExpense || editExpense) && (
+        <AddEditExpenseModal
+          isOpen={isAddingExpense || !!editExpense}
+          onClose={()=>{setIsAddingExpense(false);setEditExpense(null);}}
+          group={group}
+          members={group.members}
+          expense={editExpense}
+        />
+      )}
     </div>
   );
 };

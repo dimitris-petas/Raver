@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useGroupStore } from '../store';
+import { useAuthStore } from '../store';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import CreateGroupModal from '../components/CreateGroupModal';
 
 export default function Groups() {
   const { groups, fetchGroups } = useGroupStore();
+  const { user } = useAuthStore();
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'oweMe' | 'iOwe' | 'outstanding'>('all');
 
   useEffect(() => {
     fetchGroups();
@@ -29,6 +32,17 @@ export default function Groups() {
     return colors[Math.abs(hash) % colors.length];
   }
 
+  // Filter logic
+  const filteredGroups = groups.filter(group => {
+    if (filter === 'all') return true;
+    const me = group.members.find(m => m.id === user?.id);
+    if (!me) return false;
+    if (filter === 'oweMe') return me.balance > 0;
+    if (filter === 'iOwe') return me.balance < 0;
+    if (filter === 'outstanding') return group.members.some(m => m.balance !== 0);
+    return true;
+  });
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="flex justify-between items-center mb-6">
@@ -41,11 +55,16 @@ export default function Groups() {
           Create Group
         </button>
       </div>
-
+      <div className="flex gap-2 mb-6">
+        <button className={`btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('all')}>All</button>
+        <button className={`btn btn-sm ${filter === 'oweMe' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('oweMe')}>Owe Me</button>
+        <button className={`btn btn-sm ${filter === 'iOwe' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('iOwe')}>I Owe</button>
+        <button className={`btn btn-sm ${filter === 'outstanding' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('outstanding')}>Outstanding</button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {groups.length === 0 ? (
+        {filteredGroups.length === 0 ? (
           <div className="col-span-full text-center py-12">
-            <p className="text-gray-500 mb-4">You haven't created any groups yet</p>
+            <p className="text-gray-500 mb-4">No groups found for this filter</p>
             <button
               onClick={() => setIsCreateGroupModalOpen(true)}
               className="btn btn-primary"
@@ -54,7 +73,7 @@ export default function Groups() {
             </button>
           </div>
         ) : (
-          groups.map((group) => (
+          filteredGroups.map((group) => (
             <Link
               key={group.id}
               to={`/groups/${group.id}`}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useGroupStore } from '../store';
 import { useExpenseStore } from '../store';
+import { useAuthStore } from '../store';
 import { PlusIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import {
   Chart as ChartJS,
@@ -18,6 +19,7 @@ import {
 } from 'chart.js';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import { format } from 'date-fns';
+import DateRangePicker from '../components/DateRangePicker';
 
 ChartJS.register(
   CategoryScale,
@@ -35,8 +37,10 @@ ChartJS.register(
 const Dashboard = () => {
   const { groups, fetchGroups, isLoading: groupsLoading } = useGroupStore();
   const { expenses, fetchExpenses, isLoading: expensesLoading } = useExpenseStore();
-  const [timeRange, setTimeRange] = useState('week');
+  const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
+  const [startDate, setStartDate] = useState<string | null>(null);
+  const [endDate, setEndDate] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -52,9 +56,25 @@ const Dashboard = () => {
         setIsLoading(false);
       }
     };
-
     loadData();
-  }, [fetchGroups, fetchExpenses]);
+    // eslint-disable-next-line
+  }, []);
+
+  // Filter expenses by selected period
+  const filteredExpenses = expenses.filter(e => {
+    if (startDate && new Date(e.date) < new Date(startDate)) return false;
+    if (endDate && new Date(e.date) > new Date(endDate)) return false;
+    return true;
+  });
+
+  // Calculate total you owe (sum of negative balances)
+  const totalOwe = groups.reduce((sum, group) => {
+    const member = group.members.find(m => m.id === user?.id);
+    return sum + (member && member.balance < 0 ? member.balance : 0);
+  }, 0);
+
+  // Calculate total spent in period
+  const totalSpent = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   // Calculate total balance
   const totalBalance = groups.reduce((sum, group) => {
@@ -150,6 +170,28 @@ const Dashboard = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-xl font-bold">Overview</h2>
+          <div className="flex gap-4 flex-wrap">
+            <div className="card p-4">
+              <div className="text-sm text-gray-500">Total You Owe</div>
+              <div className="text-2xl font-bold text-red-600">${Math.abs(totalOwe).toFixed(2)}</div>
+            </div>
+            <div className="card p-4">
+              <div className="text-sm text-gray-500">Total Spent</div>
+              <div className="text-2xl font-bold text-fuchsia-700">${totalSpent.toFixed(2)}</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(start, end) => { setStartDate(start); setEndDate(end); }}
+          />
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="card p-6">
           <h3 className="text-sm font-medium text-gray-500 mb-1">Total Balance</h3>

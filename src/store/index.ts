@@ -24,6 +24,8 @@ interface GroupState {
   deleteGroup: (groupId: string) => Promise<void>;
   addMember: (groupId: string, email: string, name?: string) => Promise<void>;
   updateGroupImage: (groupId: string, image: string) => Promise<void>;
+  inviteToGroup: (groupId: string, email: string) => Promise<void>;
+  simplifyDebts: (groupId: string) => Promise<boolean>;
 }
 
 interface ExpenseState {
@@ -32,6 +34,8 @@ interface ExpenseState {
   error: string | null;
   fetchExpenses: (groupId: string) => Promise<void>;
   addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+  editExpense: (expenseId: string, updates: Partial<Expense>) => Promise<void>;
+  exportGroupDataToCSV: (groupId: string, startDate?: string, endDate?: string) => Promise<string>;
 }
 
 interface SettlementState {
@@ -206,6 +210,21 @@ export const useGroupStore = create<GroupState>()(
           throw error;
         }
       },
+      inviteToGroup: async (groupId: string, email: string) => {
+        try {
+          await mockApi.inviteToGroup(groupId, email);
+          await get().fetchGroups();
+        } catch (error) {
+          throw error;
+        }
+      },
+      simplifyDebts: async (groupId: string) => {
+        try {
+          return await mockApi.simplifyDebts(groupId);
+        } catch (error) {
+          throw error;
+        }
+      },
     }),
     {
       name: 'group-storage',
@@ -214,29 +233,54 @@ export const useGroupStore = create<GroupState>()(
   )
 );
 
-export const useExpenseStore = create<ExpenseState>((set) => ({
-  expenses: [],
-  isLoading: false,
-  error: null,
-  fetchExpenses: async (groupId: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const expenses = await mockApi.getExpenses(groupId);
-      set({ expenses, isLoading: false });
-    } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+export const useExpenseStore = create<ExpenseState>()(
+  persist(
+    (set, get) => ({
+      expenses: [],
+      isLoading: false,
+      error: null,
+      fetchExpenses: async (groupId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const expenses = await mockApi.getExpenses(groupId);
+          set({ expenses, isLoading: false });
+        } catch (error) {
+          set({ error: (error as Error).message, isLoading: false });
+        }
+      },
+      addExpense: async (expense: Omit<Expense, 'id'>) => {
+        set({ isLoading: true, error: null });
+        try {
+          const newExpense = await mockApi.createExpense(expense);
+          set((state) => ({ expenses: [...state.expenses, newExpense], isLoading: false }));
+        } catch (error) {
+          set({ error: (error as Error).message, isLoading: false });
+        }
+      },
+      editExpense: async (expenseId: string, updates: Partial<Expense>) => {
+        try {
+          const updated = await mockApi.editExpense(expenseId, updates);
+          set(state => ({
+            expenses: state.expenses.map(e => e.id === expenseId ? updated : e)
+          }));
+        } catch (error) {
+          throw error;
+        }
+      },
+      exportGroupDataToCSV: async (groupId: string, startDate?: string, endDate?: string) => {
+        try {
+          return await mockApi.exportGroupDataToCSV(groupId, startDate, endDate);
+        } catch (error) {
+          throw error;
+        }
+      },
+    }),
+    {
+      name: 'expense-storage',
+      partialize: (state) => ({ expenses: state.expenses }),
     }
-  },
-  addExpense: async (expense) => {
-    set({ isLoading: true, error: null });
-    try {
-      const newExpense = await mockApi.createExpense(expense);
-      set((state) => ({ expenses: [...state.expenses, newExpense], isLoading: false }));
-    } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
-    }
-  },
-}));
+  )
+);
 
 export const useSettlementStore = create<SettlementState>((set) => ({
   settlements: [],

@@ -137,6 +137,7 @@ export const mockApi = {
       members: initialMembers,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      isPrivate: initialMembers.length === 1,
     };
 
     groups.push(group);
@@ -300,6 +301,7 @@ export const mockApi = {
       avatar: user.avatar
     };
     group.members.push(newMember);
+    group.isPrivate = false;
     saveData('mock_groups', groups);
     return group;
   },
@@ -342,5 +344,64 @@ export const mockApi = {
     group.updatedAt = new Date().toISOString();
     saveData('mock_groups', groups);
     return group;
+  },
+
+  // Add editExpense
+  editExpense: async (expenseId: string, updates: Partial<Expense>): Promise<Expense> => {
+    const currentUser = getCurrentUser();
+    if (!currentUser) throw new Error('Not authenticated');
+    const idx = expenses.findIndex(e => e.id === expenseId);
+    if (idx === -1) throw new Error('Expense not found');
+    const expense = expenses[idx];
+    // Only allow editing if user is in group
+    const group = groups.find(g => g.id === expense.groupId);
+    if (!group || !group.members.some(m => m.id === currentUser.id)) throw new Error('Not authorized');
+    const updated = { ...expense, ...updates };
+    expenses[idx] = updated;
+    saveData('mock_expenses', expenses);
+    return updated;
+  },
+
+  // Export group data to CSV
+  exportGroupDataToCSV: async (groupId: string, startDate?: string, endDate?: string): Promise<string> => {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) throw new Error('Group not found');
+    let groupExpenses = expenses.filter(e => e.groupId === groupId);
+    if (startDate) groupExpenses = groupExpenses.filter(e => new Date(e.date) >= new Date(startDate));
+    if (endDate) groupExpenses = groupExpenses.filter(e => new Date(e.date) <= new Date(endDate));
+    const header = ['Date', 'Description', 'Amount', 'Category', 'Paid By', 'Note', 'Receipt'];
+    const rows = groupExpenses.map(e => [
+      new Date(e.date).toLocaleDateString(),
+      '"' + (e.description || '').replace(/"/g, '""') + '"',
+      e.amount,
+      e.category || '',
+      group.members.find(m => m.id === e.paidBy)?.name || '',
+      '"' + (e.note || '').replace(/"/g, '""') + '"',
+      e.receiptUrl ? e.receiptUrl : ''
+    ]);
+    const csv = [header, ...rows].map(r => r.join(',')).join('\r\n');
+    return csv;
+  },
+
+  // Invite via link (mock)
+  inviteToGroup: async (groupId: string, email: string): Promise<void> => {
+    // Just add member
+    const group = groups.find(g => g.id === groupId);
+    if (!group) throw new Error('Group not found');
+    if (group.members.some(m => m.email === email)) throw new Error('Already a member');
+    let user = users.find(u => u.email === email);
+    if (!user) {
+      user = { id: uuidv4(), email, name: email.split('@')[0], avatar: `https://i.pravatar.cc/150?u=${email}` };
+      users.push(user);
+      saveData('mock_users', users);
+    }
+    group.members.push({ id: user.id, name: user.name, email: user.email, balance: 0, avatar: user.avatar });
+    saveData('mock_groups', groups);
+  },
+
+  // Simplify debts (mock, just returns true)
+  simplifyDebts: async (groupId: string): Promise<boolean> => {
+    // No-op for mock
+    return true;
   },
 }; 

@@ -12,6 +12,7 @@ export interface Group {
   createdAt: string;
   updatedAt: string;
   image?: string;
+  isPrivate?: boolean;
 }
 
 export interface GroupMember {
@@ -33,6 +34,7 @@ export interface Expense {
   category: string;
   note?: string;
   status?: 'pending' | 'completed';
+  receiptUrl?: string;
 }
 
 export interface ExpenseShare {
