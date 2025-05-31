@@ -69,6 +69,13 @@ export const useAuthStore = create<AuthState>()(
       },
       logout: () => {
         set({ user: null });
+        localStorage.removeItem('mock_users');
+        localStorage.removeItem('mock_groups');
+        localStorage.removeItem('mock_expenses');
+        localStorage.removeItem('mock_settlements');
+        localStorage.removeItem('auth-storage');
+        localStorage.removeItem('group-storage');
+        localStorage.removeItem('expense-storage');
       },
       updateProfile: async (data: { name: string; email: string; avatar?: string }) => {
         try {

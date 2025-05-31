@@ -4,11 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to get data from localStorage
 const getStoredData = <T>(key: string, defaultValue: T): T => {
-  // Clear data in development mode
-  if (import.meta.env.DEV) {
-    localStorage.removeItem(key);
-    return defaultValue;
-  }
   const stored = localStorage.getItem(key);
   return stored ? JSON.parse(stored) : defaultValue;
 };
@@ -27,26 +22,6 @@ let settlements: Settlement[] = getStoredData('mock_settlements', []);
 // Helper function to get current user
 const getCurrentUser = (): User | null => {
   return useAuthStore.getState().user;
-};
-
-// Helper function to create a default group for a user
-const createDefaultGroup = (user: User): Group => {
-  const defaultGroup: Group = {
-    id: uuidv4(),
-    name: "My First Group",
-    members: [{
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      balance: 0,
-      avatar: user.avatar
-    }],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  groups.push(defaultGroup);
-  saveData('mock_groups', groups);
-  return defaultGroup;
 };
 
 // Mock API functions
@@ -78,9 +53,6 @@ export const mockApi = {
     // Add new user to users array
     users.push(newUser);
     saveData('mock_users', users);
-
-    // Create a default group for the new user
-    createDefaultGroup(newUser);
 
     return { user: newUser, token: 'mock-token' };
   },

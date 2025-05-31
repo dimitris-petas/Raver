@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store';
 import { useNavigate } from 'react-router-dom';
+import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
 
 // Helper to get initials
 function getInitials(nameOrEmail: string) {
@@ -35,6 +37,7 @@ const Settings = () => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState('');
+  const [showResetModal, setShowResetModal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,6 +172,72 @@ const Settings = () => {
           >
             Logout
           </button>
+          <button
+            className="btn btn-danger mt-4"
+            onClick={() => setShowResetModal(true)}
+          >
+            Reset All Data
+          </button>
+          <Transition appear show={showResetModal} as={Fragment}>
+            <Dialog as="div" className="relative z-50" onClose={() => setShowResetModal(false)}>
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0"
+                enterTo="opacity-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+                <div className="fixed inset-0 bg-black bg-opacity-25" />
+              </Transition.Child>
+              <div className="fixed inset-0 overflow-y-auto">
+                <div className="flex min-h-full items-center justify-center p-4">
+                  <Transition.Child
+                    as={Fragment}
+                    enter="ease-out duration-300"
+                    enterFrom="opacity-0 scale-95"
+                    enterTo="opacity-100 scale-100"
+                    leave="ease-in duration-200"
+                    leaveFrom="opacity-100 scale-100"
+                    leaveTo="opacity-0 scale-95"
+                  >
+                    <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
+                      <Dialog.Title as="h3" className="text-lg font-bold text-red-600 mb-4">
+                        Reset All Data
+                      </Dialog.Title>
+                      <div className="mb-6 text-gray-700">
+                        Are you sure you want to <span className="font-semibold text-red-600">reset ALL data</span>? This will remove all users, groups, expenses, and settings. This action <span className="font-semibold">cannot be undone</span>.
+                      </div>
+                      <div className="flex justify-end gap-4">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => setShowResetModal(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => {
+                            localStorage.removeItem('mock_users');
+                            localStorage.removeItem('mock_groups');
+                            localStorage.removeItem('mock_expenses');
+                            localStorage.removeItem('mock_settlements');
+                            localStorage.removeItem('auth-storage');
+                            localStorage.removeItem('group-storage');
+                            localStorage.removeItem('expense-storage');
+                            window.location.reload();
+                          }}
+                        >
+                          Yes, Reset Everything
+                        </button>
+                      </div>
+                    </Dialog.Panel>
+                  </Transition.Child>
+                </div>
+              </div>
+            </Dialog>
+          </Transition>
         </div>
       </div>
     </div>
